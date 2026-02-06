@@ -99,6 +99,7 @@ export const McpPromptButton = React.forwardRef<
   McpPromptButtonProps
 >(({ className, onInsertText, value, ...props }, ref) => {
   const { data: promptList, isLoading } = useTamboMcpPromptList();
+  const [demoPromptInserted, setDemoPromptInserted] = React.useState(false);
   const [selectedPromptName, setSelectedPromptName] = React.useState<
     string | null
   >(null);
@@ -155,8 +156,54 @@ export const McpPromptButton = React.forwardRef<
   }, [promptError]);
 
   // Only show button if prompts are available (hide during loading and when no prompts)
+  const demoFallbackEnabled =
+    process.env.NEXT_PUBLIC_INTENTOS_DEMO_MODE !== "false";
+  const demoPromptText =
+    "Create a 30-day internship preparation plan\n\nConstraints:\n- Target role: Software engineering intern\n- Hours/week: 10\n- Focus areas: DSA, React";
+
   if (!promptList || promptList.length === 0) {
-    return null;
+    if (!demoFallbackEnabled) {
+      return null;
+    }
+
+    if (demoPromptInserted) {
+      return null;
+    }
+
+    const trimmedValue = value?.trim() ?? "";
+    const alreadyHasDemo = trimmedValue.includes(demoPromptText);
+    const newValue = alreadyHasDemo
+      ? trimmedValue
+      : trimmedValue
+        ? `${trimmedValue}\n\n${demoPromptText}`
+        : demoPromptText;
+    return (
+      <TooltipProvider>
+        <Tooltip
+          content="Insert demo prompt"
+          side="top"
+          className="bg-muted text-foreground"
+        >
+          <button
+            ref={ref}
+            type="button"
+            className={cn(
+              "w-10 h-10 rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              className,
+            )}
+            aria-label="Insert demo prompt"
+            data-slot="mcp-demo-prompt-button"
+            onClick={() => {
+              onInsertText(newValue);
+              setDemoPromptInserted(true);
+            }}
+            {...props}
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+        </Tooltip>
+      </TooltipProvider>
+    );
   }
 
   const buttonClasses = cn(
@@ -444,6 +491,9 @@ export const McpResourceButton = React.forwardRef<
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  const demoFallbackEnabled =
+    process.env.NEXT_PUBLIC_INTENTOS_DEMO_MODE !== "false";
+
   // Filter resources based on search query
   const filteredResources = React.useMemo(() => {
     if (!resourceList) return [];
@@ -473,7 +523,39 @@ export const McpResourceButton = React.forwardRef<
 
   // Only show button if resources are available
   if (!resourceList || resourceList.length === 0) {
-    return null;
+    if (!demoFallbackEnabled) {
+      return null;
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip
+          content="Insert demo resource"
+          side="top"
+          className="bg-muted text-foreground"
+        >
+          <button
+            ref={ref}
+            type="button"
+            className={cn(
+              "w-10 h-10 rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              className,
+            )}
+            aria-label="Insert demo resource"
+            data-slot="mcp-demo-resource-button"
+            onClick={() =>
+              onInsertResource(
+                "demo://resume-checklist",
+                "Demo resource: resume checklist",
+              )
+            }
+            {...props}
+          >
+            <AtSign className="w-4 h-4" />
+          </button>
+        </Tooltip>
+      </TooltipProvider>
+    );
   }
 
   const buttonClasses = cn(

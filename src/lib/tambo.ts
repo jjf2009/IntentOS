@@ -9,6 +9,10 @@
  */
 
 import { Graph, graphSchema } from "@/components/tambo/graph";
+import {
+  IntentWorkflow,
+  intentWorkflowSchema,
+} from "@/components/tambo/intent-workflow";
 import { DataCard, dataCardSchema } from "@/components/ui/card-data";
 import {
   getCountryPopulations,
@@ -84,6 +88,13 @@ export const tools: TamboTool[] = [
  * can be controlled by AI to dynamically render UI elements based on user interactions.
  */
 export const components: TamboComponent[] = [
+  {
+    name: "IntentWorkflow",
+    description:
+      "A structured intent-driven workflow renderer (elicitation, timeline, tasks, progress) used for IntentOS demo flows.",
+    component: IntentWorkflow,
+    propsSchema: intentWorkflowSchema,
+  },
   {
     name: "Graph",
     description:

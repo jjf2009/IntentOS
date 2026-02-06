@@ -9,6 +9,7 @@ import {
   ToolcallInfo,
   type messageVariants,
 } from "@/components/tambo/message";
+import { IntentMessageRenderer } from "@/components/tambo/intent-message-renderer";
 import { cn } from "@/lib/utils";
 import { type TamboThreadMessage, useTambo } from "@tambo-ai/react";
 import { type VariantProps } from "class-variance-authority";
@@ -174,6 +175,9 @@ const ThreadContentMessages = React.forwardRef<
                 />
                 <ToolcallInfo />
                 <MessageRenderedComponentArea className="w-full" />
+                {message.role === "assistant" && (
+                  <IntentMessageRenderer message={message} />
+                )}
               </div>
             </Message>
           </div>
