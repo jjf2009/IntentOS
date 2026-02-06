@@ -17,6 +17,10 @@ export default [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 
   {
+    files: [
+      "src/components/tambo/**/*.{ts,tsx}",
+      "src/app/interactables/**/*.{ts,tsx}",
+    ],
     rules: {
       "react-hooks/preserve-manual-memoization": "off",
       "react-hooks/refs": "off",
