@@ -11,11 +11,11 @@ function getFirst(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function safeDecodeURIComponent(value: string) {
+function safeDecodeURIComponent(value: string, fallback: string) {
   try {
     return decodeURIComponent(value);
   } catch {
-    return value;
+    return fallback;
   }
 }
 
@@ -48,13 +48,13 @@ export default async function LoginPage({
 
         {error && (
           <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {safeDecodeURIComponent(error)}
+            {safeDecodeURIComponent(error, "An unexpected error occurred.")}
           </div>
         )}
 
         {!error && message && (
           <div className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            {safeDecodeURIComponent(message)}
+            {safeDecodeURIComponent(message, "Success.")}
           </div>
         )}
 

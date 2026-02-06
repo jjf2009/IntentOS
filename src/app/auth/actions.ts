@@ -16,7 +16,9 @@ const signInSchema = z.object({
 });
 
 function encodeRedirectParam(value: string) {
-  return encodeURIComponent(value);
+  const maxLength = 200;
+  const truncated = value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+  return encodeURIComponent(truncated);
 }
 
 export async function signUp(formData: FormData) {
