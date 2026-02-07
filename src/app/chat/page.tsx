@@ -2,6 +2,7 @@
 
 import { MessageThreadFull } from "@/components/tambo/message-thread-full";
 import { useMcpServers } from "@/components/tambo/mcp-config-modal";
+import { GEMINI_INTENT_SYSTEM_PROMPT } from "@/lib/intent/gemini-intent-system-prompt";
 import { components, tools } from "@/lib/tambo";
 import { TamboProvider } from "@tambo-ai/react";
 
@@ -18,17 +19,41 @@ import { TamboProvider } from "@tambo-ai/react";
 export default function Home() {
   // Load MCP server configurations
   const mcpServers = useMcpServers();
+  const apiKey = process.env.NEXT_PUBLIC_TAMBO_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="max-w-lg px-6 text-center">
+          <div className="text-base font-semibold text-foreground">
+            Missing Tambo API key
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground">
+            Set <span className="font-mono">NEXT_PUBLIC_TAMBO_API_KEY</span> in
+            your environment to use the chat.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TamboProvider
-      apiKey={process.env.NEXT_PUBLIC_TAMBO_API_KEY!}
+      apiKey={apiKey}
       components={components}
       tools={tools}
       tamboUrl={process.env.NEXT_PUBLIC_TAMBO_URL}
       mcpServers={mcpServers}
+      autoGenerateThreadName={false}
+      initialMessages={[
+        {
+          role: "system",
+          content: [{ type: "text", text: GEMINI_INTENT_SYSTEM_PROMPT }],
+        },
+      ]}
     >
       <div className="h-screen">
-        <MessageThreadFull className="max-w-4xl mx-auto"/>
+        <MessageThreadFull className="max-w-4xl mx-auto" />
       </div>
     </TamboProvider>
   );
