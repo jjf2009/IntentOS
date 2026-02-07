@@ -87,7 +87,7 @@ function messageFromRow(row: MessageRow) {
   };
 }
 
-async function tamboFetch(pathname: string, init: RequestInit) {
+async function tamboSseFetch(pathname: string, init: RequestInit) {
   const apiKey = getTamboApiKey();
   if (!apiKey) {
     throw new Error(
@@ -250,6 +250,15 @@ async function handleThreadGenerateName(
   userId: string,
   threadId: string,
 ) {
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .maybeSingle();
+
+  if (threadError) return jsonError(threadError.message, 500);
+  if (!thread) return jsonError("Not found", 404);
+
   const { data: messages, error } = await supabase
     .from("messages")
     .select("role, content")
@@ -270,16 +279,18 @@ async function handleThreadGenerateName(
 
   if (updateError) return jsonError(updateError.message, 500);
 
-  const { data: thread, error: readError } = await supabase
+  const { data: updatedThread, error: readError } = await supabase
     .from("threads")
     .select("id, created_at, updated_at, name, metadata")
     .eq("id", threadId)
     .maybeSingle();
 
   if (readError) return jsonError(readError.message, 500);
-  if (!thread) return jsonError("Not found", 404);
+  if (!updatedThread) return jsonError("Not found", 404);
 
-  return NextResponse.json(threadFromRow(thread as unknown as ThreadRow, userId));
+  return NextResponse.json(
+    threadFromRow(updatedThread as unknown as ThreadRow, userId),
+  );
 }
 
 async function handleThreadCancel() {
@@ -390,7 +401,7 @@ async function handleAdvanceStream(
     clientTools: [],
   };
 
-  const tamboResponse = await tamboFetch("/threads/advancestream", {
+  const tamboResponse = await tamboSseFetch("/threads/advancestream", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(computeBody),
@@ -453,12 +464,17 @@ async function handleAdvanceStream(
   let buffer = "";
   const reader = (tamboResponse.body as ReadableStream<Uint8Array>).getReader();
 
+  let pendingDone = false;
+
   const stream = new ReadableStream<Uint8Array>({
     async pull(controller) {
       const { done, value } = await reader.read();
       if (done) {
         try {
           await persistMessages();
+          if (pendingDone) {
+            controller.enqueue(encoder.encode("data: DONE\n"));
+          }
         } catch (error) {
           console.error("Failed to persist streamed messages", {
             error,
@@ -466,6 +482,12 @@ async function handleAdvanceStream(
             threadId: persistentThreadId,
             messageCount: finalMessages.size,
           });
+
+          controller.enqueue(
+            encoder.encode(
+              "error: Failed to persist conversation state, some messages may be missing.\n",
+            ),
+          );
         }
         controller.close();
         return;
@@ -482,7 +504,7 @@ async function handleAdvanceStream(
 
         if (!rawLine) continue;
         if (rawLine === "data: DONE") {
-          controller.enqueue(encoder.encode("data: DONE\n"));
+          pendingDone = true;
           continue;
         }
         if (rawLine.startsWith("error: ")) {
@@ -565,10 +587,12 @@ async function proxyToTambo(request: Request, path: string[]) {
   headers.delete("host");
   headers.delete("content-length");
 
+  const body = request.body ? request.clone().body : undefined;
+
   const response = await fetch(targetUrl, {
     method: request.method,
     headers,
-    body: request.body,
+    body,
     redirect: "manual",
   });
 

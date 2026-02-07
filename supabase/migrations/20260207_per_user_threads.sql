@@ -31,6 +31,11 @@ create table if not exists public.messages (
   created_at timestamptz not null default now()
 );
 
+alter table public.messages drop constraint if exists messages_role_check;
+alter table public.messages
+  add constraint messages_role_check
+  check (role in ('user', 'assistant', 'system', 'tool'));
+
 create index if not exists messages_thread_id_created_at_idx
   on public.messages (thread_id, created_at);
 
