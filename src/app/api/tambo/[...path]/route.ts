@@ -107,11 +107,22 @@ async function tamboFetch(pathname: string, init: RequestInit) {
 }
 
 function getFirstUserMessageText(messages: Array<{ role: string; content: any }>) {
+  type TextPart = { type: "text"; text: string };
+  const isTextPart = (value: unknown): value is TextPart => {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      (value as any).type === "text" &&
+      typeof (value as any).text === "string"
+    );
+  };
+
   for (const msg of messages) {
     if (msg.role !== "user") continue;
     const text = Array.isArray(msg.content)
       ? msg.content
-          .map((part: any) => (part?.type === "text" ? part.text : ""))
+          .filter(isTextPart)
+          .map((part) => part.text)
           .filter(Boolean)
           .join(" ")
           .trim()
@@ -207,7 +218,13 @@ async function handleThreadUpdate(
 
   const update: Record<string, unknown> = {};
   if (typeof body.name === "string") update.name = body.name;
-  if (body.metadata && typeof body.metadata === "object") update.metadata = body.metadata;
+  if (body.metadata && typeof body.metadata === "object") {
+    update.metadata = body.metadata;
+  }
+
+  if (Object.keys(update).length === 0) {
+    return jsonError("No valid fields to update", 400);
+  }
 
   const { error } = await supabase
     .from("threads")
@@ -287,6 +304,14 @@ async function handleAdvanceStream(
     component?: Record<string, unknown>;
     toolCallRequest?: Record<string, unknown>;
   };
+
+  const allowedRoles = new Set(["user", "assistant", "system", "tool"]);
+  if (!allowedRoles.has(messageToAppend.role)) {
+    return jsonError("Invalid message role", 400);
+  }
+  if (messageToAppend.content == null) {
+    return jsonError("Message content is required", 400);
+  }
 
   let persistentThreadId = threadId;
 
@@ -409,13 +434,20 @@ async function handleAdvanceStream(
         created_at: m.createdAt ?? new Date().toISOString(),
       }));
 
-      await supabase.from("messages").upsert(rows);
+      const { error } = await supabase.from("messages").upsert(rows);
+      if (error) {
+        throw new Error(error.message);
+      }
     }
 
-    await supabase
+    const { error: threadUpdateError } = await supabase
       .from("threads")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", persistentThreadId);
+
+    if (threadUpdateError) {
+      throw new Error(threadUpdateError.message);
+    }
   };
 
   let buffer = "";
@@ -428,7 +460,12 @@ async function handleAdvanceStream(
         try {
           await persistMessages();
         } catch (error) {
-          console.error("Failed to persist streamed messages:", error);
+          console.error("Failed to persist streamed messages", {
+            error,
+            userId,
+            threadId: persistentThreadId,
+            messageCount: finalMessages.size,
+          });
         }
         controller.close();
         return;
@@ -489,7 +526,12 @@ async function handleAdvanceStream(
       try {
         await persistMessages();
       } catch (error) {
-        console.error("Failed to persist streamed messages:", error);
+        console.error("Failed to persist streamed messages", {
+          error,
+          userId,
+          threadId: persistentThreadId,
+          messageCount: finalMessages.size,
+        });
       }
       reader.cancel().catch(() => undefined);
     },
