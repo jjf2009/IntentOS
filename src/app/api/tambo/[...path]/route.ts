@@ -36,6 +36,26 @@ type MessageRow = {
   created_at: string;
 };
 
+const MESSAGE_SELECT_COLUMNS = [
+  "id",
+  "thread_id",
+  "role",
+  "content",
+  "component_state",
+  "additional_context",
+  "component",
+  "tool_call_request",
+  "tool_calls",
+  "tool_call_id",
+  "parent_message_id",
+  "reasoning",
+  "reasoning_duration_ms",
+  "error",
+  "is_cancelled",
+  "metadata",
+  "created_at",
+].join(",");
+
 function getTamboBaseUrl(): string {
   return process.env.TAMBO_URL ?? "https://api.tambo.co";
 }
@@ -169,27 +189,7 @@ async function handleThreadRetrieve(
 
   const { data: messages, error: msgError } = await supabase
     .from("messages")
-    .select(
-      [
-        "id",
-        "thread_id",
-        "role",
-        "content",
-        "component_state",
-        "additional_context",
-        "component",
-        "tool_call_request",
-        "tool_calls",
-        "tool_call_id",
-        "parent_message_id",
-        "reasoning",
-        "reasoning_duration_ms",
-        "error",
-        "is_cancelled",
-        "metadata",
-        "created_at",
-      ].join(","),
-    )
+    .select(MESSAGE_SELECT_COLUMNS)
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
 
@@ -346,27 +346,7 @@ async function handleThreadMessagesList(
 
   const { data: messages, error } = await supabase
     .from("messages")
-    .select(
-      [
-        "id",
-        "thread_id",
-        "role",
-        "content",
-        "component_state",
-        "additional_context",
-        "component",
-        "tool_call_request",
-        "tool_calls",
-        "tool_call_id",
-        "parent_message_id",
-        "reasoning",
-        "reasoning_duration_ms",
-        "error",
-        "is_cancelled",
-        "metadata",
-        "created_at",
-      ].join(","),
-    )
+    .select(MESSAGE_SELECT_COLUMNS)
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
 
@@ -493,6 +473,7 @@ async function handleThreadMessageUpdateComponentState(
       ? (message.component_state as Record<string, unknown>)
       : {};
 
+  // Shallow merge (top-level keys) to match `useTamboComponentState` updates.
   const next = { ...current, ...body.state };
 
   const { data: updated, error } = await supabase
@@ -500,27 +481,7 @@ async function handleThreadMessageUpdateComponentState(
     .update({ component_state: next })
     .eq("id", messageId)
     .eq("thread_id", threadId)
-    .select(
-      [
-        "id",
-        "thread_id",
-        "role",
-        "content",
-        "component_state",
-        "additional_context",
-        "component",
-        "tool_call_request",
-        "tool_calls",
-        "tool_call_id",
-        "parent_message_id",
-        "reasoning",
-        "reasoning_duration_ms",
-        "error",
-        "is_cancelled",
-        "metadata",
-        "created_at",
-      ].join(","),
-    )
+    .select(MESSAGE_SELECT_COLUMNS)
     .maybeSingle();
 
   if (error) return jsonError(error.message, 500);
