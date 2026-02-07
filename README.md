@@ -86,9 +86,10 @@ Make sure in the TamboProvider wrapped around your app:
 ```tsx
 ...
 <TamboProvider
-  apiKey={process.env.NEXT_PUBLIC_TAMBO_API_KEY!}
+  apiKey="unused" // Requests are proxied through /api/tambo
   components={components} // Array of components to control
   tools={tools} // Array of tools it can use
+  tamboUrl="/api/tambo"
 >
   {children}
 </TamboProvider>

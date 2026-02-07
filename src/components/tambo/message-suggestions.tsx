@@ -7,7 +7,7 @@ import type { Suggestion, TamboThread } from "@tambo-ai/react";
 import {
   GenerationStage,
   useTambo,
-  useTamboSuggestions,
+  useTamboThreadInput,
 } from "@tambo-ai/react";
 import { Loader2Icon } from "lucide-react";
 import * as React from "react";
@@ -95,24 +95,30 @@ const MessageSuggestions = React.forwardRef<
     ref,
   ) => {
     const { thread } = useTambo();
-    const {
-      suggestions: generatedSuggestions,
-      selectedSuggestionId,
-      accept,
-      generateResult: { isPending: isGenerating, error },
-    } = useTamboSuggestions({ maxSuggestions });
+    const [selectedSuggestionId, setSelectedSuggestionId] =
+      React.useState<string | null>(null);
+    const { setValue: setInputValue } = useTamboThreadInput();
 
-    // Combine initial and generated suggestions, but only use initial ones when thread is empty
+    const accept = React.useCallback(
+      async ({ suggestion }: { suggestion: Suggestion }) => {
+        setInputValue(suggestion.detailedSuggestion);
+        setSelectedSuggestionId(suggestion.id);
+      },
+      [setInputValue],
+    );
+
+    const isGenerating = false;
+    const error: Error | null = null;
+
+    // Only use pre-seeded suggestions when thread is empty.
     const suggestions = React.useMemo(() => {
       // Only use pre-seeded suggestions if thread is empty
       if (!thread?.messages?.length && initialSuggestions.length > 0) {
         return initialSuggestions.slice(0, maxSuggestions);
       }
-      // Otherwise use generated suggestions
-      return generatedSuggestions;
+      return [];
     }, [
       thread?.messages?.length,
-      generatedSuggestions,
       initialSuggestions,
       maxSuggestions,
     ]);
