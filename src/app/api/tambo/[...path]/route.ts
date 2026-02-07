@@ -104,6 +104,17 @@ function messageFromRow(row: MessageRow) {
   };
 }
 
+async function selectMessagesForThread(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  threadId: string,
+) {
+  return supabase
+    .from("messages")
+    .select(MESSAGE_SELECT_COLUMNS)
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
+}
+
 async function tamboSseFetch(pathname: string, init: RequestInit) {
   const apiKey = getTamboApiKey();
   if (!apiKey) {
@@ -187,11 +198,8 @@ async function handleThreadRetrieve(
   if (threadError) return jsonError(threadError.message, 500);
   if (!thread) return jsonError("Not found", 404);
 
-  const { data: messages, error: msgError } = await supabase
-    .from("messages")
-    .select(MESSAGE_SELECT_COLUMNS)
-    .eq("thread_id", threadId)
-    .order("created_at", { ascending: true });
+  const { data: messages, error: msgError } =
+    await selectMessagesForThread(supabase, threadId);
 
   if (msgError) return jsonError(msgError.message, 500);
 
@@ -344,11 +352,10 @@ async function handleThreadMessagesList(
   if (threadError) return jsonError(threadError.message, 500);
   if (!thread) return jsonError("Not found", 404);
 
-  const { data: messages, error } = await supabase
-    .from("messages")
-    .select(MESSAGE_SELECT_COLUMNS)
-    .eq("thread_id", threadId)
-    .order("created_at", { ascending: true });
+  const { data: messages, error } = await selectMessagesForThread(
+    supabase,
+    threadId,
+  );
 
   if (error) return jsonError(error.message, 500);
 
