@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROJECT_ID = "supabase";
+const MISSING_TAMBO_API_KEY_ERROR =
+  "Missing TAMBO_API_KEY. Set it in .env.local (server-side, not NEXT_PUBLIC).";
 
 type ThreadRow = {
   id: string;
@@ -35,12 +37,7 @@ type MessageRow = {
 };
 
 function getTamboBaseUrl(): string {
-  return (
-    process.env.TAMBO_AI_BASE_URL ??
-    process.env.TAMBO_URL ??
-    process.env.NEXT_PUBLIC_TAMBO_URL ??
-    "https://api.tambo.co"
-  );
+  return process.env.TAMBO_URL ?? "https://api.tambo.co";
 }
 
 function getTamboApiKey(): string | null {
@@ -79,7 +76,7 @@ function messageFromRow(row: MessageRow) {
     tool_calls: row.tool_calls ?? undefined,
     tool_call_id: row.tool_call_id ?? undefined,
     parentMessageId: row.parent_message_id ?? undefined,
-    reasoning: (row.reasoning ?? undefined) as never,
+    reasoning: row.reasoning ?? undefined,
     reasoningDurationMS: row.reasoning_duration_ms ?? undefined,
     error: row.error ?? undefined,
     isCancelled: row.is_cancelled ?? undefined,
@@ -90,9 +87,7 @@ function messageFromRow(row: MessageRow) {
 async function tamboSseFetch(pathname: string, init: RequestInit) {
   const apiKey = getTamboApiKey();
   if (!apiKey) {
-    throw new Error(
-      "Missing TAMBO_API_KEY. Set it in .env.local (server-side, not NEXT_PUBLIC).",
-    );
+    throw new Error(MISSING_TAMBO_API_KEY_ERROR);
   }
 
   const url = new URL(pathname, getTamboBaseUrl());
@@ -303,7 +298,23 @@ async function handleAdvanceStream(
   userId: string,
   threadId: string | null,
 ) {
-  const body = (await request.json().catch(() => null)) as any;
+  type AdvanceStreamRequestBody = {
+    messageToAppend?: {
+      role: "user" | "assistant" | "system" | "tool";
+      content: unknown;
+      additionalContext?: Record<string, unknown>;
+      component?: Record<string, unknown>;
+      toolCallRequest?: Record<string, unknown>;
+    };
+    initialMessages?: unknown;
+    availableComponents?: unknown;
+    forceToolChoice?: unknown;
+    toolCallCounts?: unknown;
+  };
+
+  const body = (await request.json().catch(() => null)) as
+    | AdvanceStreamRequestBody
+    | null;
   if (!body || !body.messageToAppend) {
     return jsonError("Invalid JSON body", 400);
   }
@@ -336,7 +347,9 @@ async function handleAdvanceStream(
     if (threadError) return jsonError(threadError.message, 500);
     persistentThreadId = (newThread as any).id as string;
 
-    const initial = Array.isArray(body.initialMessages) ? body.initialMessages : [];
+    const initial = Array.isArray(body.initialMessages)
+      ? body.initialMessages
+      : [];
     if (initial.length > 0) {
       const initialRows = initial.map((m: any) => ({
         id: crypto.randomUUID(),
@@ -347,7 +360,6 @@ async function handleAdvanceStream(
         component_state: m.componentState ?? {},
         component: m.component ?? null,
         tool_call_request: m.toolCallRequest ?? null,
-        created_at: m.createdAt ?? new Date().toISOString(),
       }));
 
       const { error: insertError } = await supabase.from("messages").insert(initialRows);
@@ -393,13 +405,22 @@ async function handleAdvanceStream(
     toolCallRequest: m.tool_call_request ?? undefined,
   }));
 
-  const computeBody = {
-    ...body,
+  const computeBody: Record<string, unknown> = {
     contextKey: userId,
     initialMessages,
     messageToAppend,
     clientTools: [],
   };
+
+  if (body.availableComponents != null) {
+    computeBody.availableComponents = body.availableComponents;
+  }
+  if (typeof body.forceToolChoice === "string") {
+    computeBody.forceToolChoice = body.forceToolChoice;
+  }
+  if (body.toolCallCounts && typeof body.toolCallCounts === "object") {
+    computeBody.toolCallCounts = body.toolCallCounts;
+  }
 
   const tamboResponse = await tamboSseFetch("/threads/advancestream", {
     method: "POST",
@@ -442,7 +463,6 @@ async function handleAdvanceStream(
         error: m.error ?? null,
         is_cancelled: m.isCancelled ?? false,
         metadata: m.metadata ?? null,
-        created_at: m.createdAt ?? new Date().toISOString(),
       }));
 
       const { error } = await supabase.from("messages").upsert(rows);
@@ -493,7 +513,7 @@ async function handleAdvanceStream(
         return;
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
 
       while (true) {
         const nl = buffer.indexOf("\n");
@@ -572,10 +592,7 @@ async function handleAdvanceStream(
 async function proxyToTambo(request: Request, path: string[]) {
   const apiKey = getTamboApiKey();
   if (!apiKey) {
-    return jsonError(
-      "Missing TAMBO_API_KEY. Set it in .env.local (server-side, not NEXT_PUBLIC).",
-      500,
-    );
+    return jsonError(MISSING_TAMBO_API_KEY_ERROR, 500);
   }
 
   const targetUrl = new URL(`/${path.join("/")}`, getTamboBaseUrl());

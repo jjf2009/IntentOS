@@ -14,6 +14,7 @@ export function ChatClient({ userId }: { userId: string }) {
       apiKey="unused"
       tamboUrl="/api/tambo"
       contextKey={userId}
+      autoGenerateThreadName={false}
       components={components}
       tools={tools}
       mcpServers={mcpServers}
