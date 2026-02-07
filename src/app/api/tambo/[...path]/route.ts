@@ -134,6 +134,7 @@ async function handleThreadsList(
   const { data, error } = await supabase
     .from("threads")
     .select("id, created_at, updated_at, name, metadata")
+    .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -160,6 +161,7 @@ async function handleThreadRetrieve(
     .from("threads")
     .select("id, created_at, updated_at, name, metadata")
     .eq("id", threadId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (threadError) return jsonError(threadError.message, 500);
@@ -224,7 +226,8 @@ async function handleThreadUpdate(
   const { error } = await supabase
     .from("threads")
     .update(update)
-    .eq("id", threadId);
+    .eq("id", threadId)
+    .eq("user_id", userId);
 
   if (error) return jsonError(error.message, 500);
 
@@ -232,6 +235,7 @@ async function handleThreadUpdate(
     .from("threads")
     .select("id, created_at, updated_at, name, metadata")
     .eq("id", threadId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (readError) return jsonError(readError.message, 500);
@@ -249,6 +253,7 @@ async function handleThreadGenerateName(
     .from("threads")
     .select("id")
     .eq("id", threadId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (threadError) return jsonError(threadError.message, 500);
@@ -270,7 +275,8 @@ async function handleThreadGenerateName(
   const { error: updateError } = await supabase
     .from("threads")
     .update({ name })
-    .eq("id", threadId);
+    .eq("id", threadId)
+    .eq("user_id", userId);
 
   if (updateError) return jsonError(updateError.message, 500);
 
@@ -278,6 +284,7 @@ async function handleThreadGenerateName(
     .from("threads")
     .select("id, created_at, updated_at, name, metadata")
     .eq("id", threadId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (readError) return jsonError(readError.message, 500);
@@ -288,8 +295,238 @@ async function handleThreadGenerateName(
   );
 }
 
-async function handleThreadCancel() {
+async function handleThreadCancel(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  threadId: string,
+) {
+  const { data: thread, error } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) return jsonError(error.message, 500);
+  if (!thread) return jsonError("Not found", 404);
+
   return NextResponse.json(true);
+}
+
+async function handleThreadDelete(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  threadId: string,
+) {
+  const { error } = await supabase
+    .from("threads")
+    .delete()
+    .eq("id", threadId)
+    .eq("user_id", userId);
+
+  if (error) return jsonError(error.message, 500);
+
+  return new Response(null, { status: 204 });
+}
+
+async function handleThreadMessagesList(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  threadId: string,
+) {
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (threadError) return jsonError(threadError.message, 500);
+  if (!thread) return jsonError("Not found", 404);
+
+  const { data: messages, error } = await supabase
+    .from("messages")
+    .select(
+      [
+        "id",
+        "thread_id",
+        "role",
+        "content",
+        "component_state",
+        "additional_context",
+        "component",
+        "tool_call_request",
+        "tool_calls",
+        "tool_call_id",
+        "parent_message_id",
+        "reasoning",
+        "reasoning_duration_ms",
+        "error",
+        "is_cancelled",
+        "metadata",
+        "created_at",
+      ].join(","),
+    )
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
+
+  if (error) return jsonError(error.message, 500);
+
+  return NextResponse.json(
+    (messages as unknown as MessageRow[]).map(messageFromRow),
+  );
+}
+
+async function handleThreadMessagesCreate(
+  request: Request,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  threadId: string,
+) {
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (threadError) return jsonError(threadError.message, 500);
+  if (!thread) return jsonError("Not found", 404);
+
+  const body = (await request.json().catch(() => null)) as
+    | {
+        role?: "user" | "assistant" | "system" | "tool";
+        content?: unknown;
+        additionalContext?: Record<string, unknown>;
+        component?: Record<string, unknown>;
+        componentState?: Record<string, unknown>;
+        toolCallRequest?: Record<string, unknown>;
+        tool_calls?: unknown[];
+        tool_call_id?: string;
+        parentMessageId?: string;
+        reasoning?: unknown;
+        reasoningDurationMS?: number;
+        error?: string;
+        isCancelled?: boolean;
+        metadata?: Record<string, unknown>;
+      }
+    | null;
+
+  if (!body) return jsonError("Invalid JSON body", 400);
+  if (!body.role) return jsonError("Message role is required", 400);
+  if (body.content == null) return jsonError("Message content is required", 400);
+
+  const allowedRoles = new Set(["user", "assistant", "system", "tool"]);
+  if (!allowedRoles.has(body.role)) {
+    return jsonError("Invalid message role", 400);
+  }
+
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("messages").insert({
+    id,
+    thread_id: threadId,
+    role: body.role,
+    content: body.content,
+    additional_context: body.additionalContext ?? null,
+    component_state: body.componentState ?? {},
+    component: body.component ?? null,
+    tool_call_request: body.toolCallRequest ?? null,
+    tool_calls: body.tool_calls ?? null,
+    tool_call_id: body.tool_call_id ?? null,
+    parent_message_id: body.parentMessageId ?? null,
+    reasoning: body.reasoning ?? null,
+    reasoning_duration_ms: body.reasoningDurationMS ?? null,
+    error: body.error ?? null,
+    is_cancelled: body.isCancelled ?? false,
+    metadata: body.metadata ?? null,
+  });
+
+  if (error) return jsonError(error.message, 500);
+
+  const { error: threadUpdateError } = await supabase
+    .from("threads")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", threadId)
+    .eq("user_id", userId);
+
+  if (threadUpdateError) return jsonError(threadUpdateError.message, 500);
+
+  return NextResponse.json({ id });
+}
+
+async function handleThreadMessageUpdateComponentState(
+  request: Request,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  threadId: string,
+  messageId: string,
+) {
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (threadError) return jsonError(threadError.message, 500);
+  if (!thread) return jsonError("Not found", 404);
+
+  const body = (await request.json().catch(() => null)) as
+    | { state?: Record<string, unknown> }
+    | null;
+  if (!body || !body.state || typeof body.state !== "object") {
+    return jsonError("Invalid JSON body", 400);
+  }
+
+  const { data: message, error: readError } = await supabase
+    .from("messages")
+    .select("component_state")
+    .eq("id", messageId)
+    .eq("thread_id", threadId)
+    .maybeSingle();
+
+  if (readError) return jsonError(readError.message, 500);
+  if (!message) return jsonError("Not found", 404);
+
+  const current =
+    message.component_state && typeof message.component_state === "object"
+      ? (message.component_state as Record<string, unknown>)
+      : {};
+
+  const next = { ...current, ...body.state };
+
+  const { data: updated, error } = await supabase
+    .from("messages")
+    .update({ component_state: next })
+    .eq("id", messageId)
+    .eq("thread_id", threadId)
+    .select(
+      [
+        "id",
+        "thread_id",
+        "role",
+        "content",
+        "component_state",
+        "additional_context",
+        "component",
+        "tool_call_request",
+        "tool_calls",
+        "tool_call_id",
+        "parent_message_id",
+        "reasoning",
+        "reasoning_duration_ms",
+        "error",
+        "is_cancelled",
+        "metadata",
+        "created_at",
+      ].join(","),
+    )
+    .maybeSingle();
+
+  if (error) return jsonError(error.message, 500);
+  if (!updated) return jsonError("Not found", 404);
+
+  return NextResponse.json(messageFromRow(updated as unknown as MessageRow));
 }
 
 async function handleAdvanceStream(
@@ -336,6 +573,18 @@ async function handleAdvanceStream(
   }
 
   let persistentThreadId = threadId;
+
+  if (persistentThreadId) {
+    const { data: thread, error } = await supabase
+      .from("threads")
+      .select("id")
+      .eq("id", persistentThreadId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) return jsonError(error.message, 500);
+    if (!thread) return jsonError("Not found", 404);
+  }
 
   if (!persistentThreadId) {
     const { data: newThread, error: threadError } = await supabase
@@ -474,7 +723,8 @@ async function handleAdvanceStream(
     const { error: threadUpdateError } = await supabase
       .from("threads")
       .update({ updated_at: new Date().toISOString() })
-      .eq("id", persistentThreadId);
+      .eq("id", persistentThreadId)
+      .eq("user_id", userId);
 
     if (threadUpdateError) {
       throw new Error(threadUpdateError.message);
@@ -659,6 +909,30 @@ async function handler(
     if (path.length >= 2) {
       const threadId = path[1];
 
+      if (path.length === 3 && path[2] === "messages" && request.method === "GET") {
+        return handleThreadMessagesList(supabase, user.id, threadId);
+      }
+
+      if (path.length === 3 && path[2] === "messages" && request.method === "POST") {
+        return handleThreadMessagesCreate(request, supabase, user.id, threadId);
+      }
+
+      if (
+        path.length === 5 &&
+        path[2] === "messages" &&
+        path[4] === "component-state" &&
+        request.method === "PUT"
+      ) {
+        const messageId = path[3];
+        return handleThreadMessageUpdateComponentState(
+          request,
+          supabase,
+          user.id,
+          threadId,
+          messageId,
+        );
+      }
+
       if (path.length === 2 && request.method === "GET") {
         return handleThreadRetrieve(supabase, user.id, threadId);
       }
@@ -672,13 +946,19 @@ async function handler(
       }
 
       if (path.length === 3 && path[2] === "cancel" && request.method === "POST") {
-        return handleThreadCancel();
+        return handleThreadCancel(supabase, user.id, threadId);
       }
 
       if (path.length === 3 && path[2] === "advancestream" && request.method === "POST") {
         return handleAdvanceStream(request, supabase, user.id, threadId);
       }
+
+      if (path.length === 2 && request.method === "DELETE") {
+        return handleThreadDelete(supabase, user.id, threadId);
+      }
     }
+
+    return jsonError("Not found", 404);
   }
 
   return proxyToTambo(request, path);
