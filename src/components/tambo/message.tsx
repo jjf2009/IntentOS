@@ -16,6 +16,8 @@ import { Check, ChevronDown, ExternalLink, Loader2, X } from "lucide-react";
 import * as React from "react";
 import { useState } from "react";
 import { Streamdown } from "streamdown";
+import { parseIntentFromMessage } from "@/lib/intent/intent-contract";
+
 
 /**
  * Converts message content to markdown format for rendering with streamdown.
@@ -233,6 +235,16 @@ function MessageContentRenderer({
   markdownContent: string;
   markdown: boolean;
 }) {
+  const { message, isLoading } = useMessageContext();
+const intent = React.useMemo(
+  () => parseIntentFromMessage(message),
+  [message],
+);
+
+if (intent) {
+  return null;
+}
+
   if (!contentToRender) {
     return <span className="text-muted-foreground italic">Empty message</span>;
   }
@@ -961,7 +973,7 @@ function formatTextContent(
         )}
       >
         <code className="font-mono break-words whitespace-pre-wrap">
-          {JSON.stringify(parsed, null, 2)}
+          {/* {JSON.stringify(parsed, null, 2)} */}
         </code>
       </pre>
     );

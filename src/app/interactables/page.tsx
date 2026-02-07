@@ -16,16 +16,21 @@ import { TamboProvider } from "@tambo-ai/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { SettingsPanel } from "./components/settings-panel";
+import { useMcpServers } from "@/components/tambo/mcp-config-modal";
 
 export default function InteractablesPage() {
   const [isChatOpen, setIsChatOpen] = useState(true);
+  const mcpServers = useMcpServers();
+  const apiKey = process.env.NEXT_PUBLIC_TAMBO_API_KEY;
 
   return (
     <TamboProvider
-      apiKey={process.env.NEXT_PUBLIC_TAMBO_API_KEY!}
+      apiKey={apiKey!}
       components={components}
       tools={tools}
       tamboUrl={process.env.NEXT_PUBLIC_TAMBO_URL}
+      mcpServers={mcpServers}
+      autoGenerateThreadName={false}
     >
       <div className="flex h-screen bg-gray-50">
         {/* Chat Sidebar */}
