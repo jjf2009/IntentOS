@@ -2,7 +2,7 @@
 
 import { MessageThreadFull } from "@/components/tambo/message-thread-full";
 import { useMcpServers } from "@/components/tambo/mcp-config-modal";
-import { GEMINI_INTENT_SYSTEM_PROMPT } from "@/lib/intent/gemini-intent-system-prompt";
+import { CHAT_SYSTEM_PROMPT } from "@/lib/intent/chat-system-prompt";
 import { components, tools } from "@/lib/tambo";
 import { TamboProvider } from "@tambo-ai/react";
 
@@ -48,7 +48,7 @@ export default function Home() {
       initialMessages={[
         {
           role: "system",
-          content: [{ type: "text", text: GEMINI_INTENT_SYSTEM_PROMPT }],
+          content: [{ type: "text", text: CHAT_SYSTEM_PROMPT }],
         },
       ]}
     >

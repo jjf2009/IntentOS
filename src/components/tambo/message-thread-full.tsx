@@ -23,6 +23,7 @@ import {
   ThreadContent,
   ThreadContentMessages,
 } from "@/components/tambo/thread-content";
+import { IntentThreadHeader } from "@/components/tambo/intent-thread-header";
 import {
   ThreadHistory,
   ThreadHistoryHeader,
@@ -100,6 +101,7 @@ export const MessageThreadFull = React.forwardRef<
         {...props}
       >
         <ScrollableMessageContainer className="p-4">
+          <IntentThreadHeader />
           <ThreadContent variant={variant}>
             <ThreadContentMessages />
           </ThreadContent>
