@@ -18,7 +18,7 @@ export function IntentMessageRenderer({
   if (!intent) {
     return null;
   }
-
+console.log(intent);
   return (
     <div className="w-full pt-2">
       <IntentWorkflow intent={intent} />

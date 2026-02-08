@@ -18,12 +18,12 @@ export function ChatClient({ userId }: { userId: string }) {
       components={components}
       tools={tools}
       mcpServers={mcpServers}
-      initialMessages={[
-        {
-          role: "system",
-          content: [{ type: "text", text: GEMINI_INTENT_SYSTEM_PROMPT }],
-        },
-      ]}
+      // initialMessages={[
+      //   {
+      //     role: "system",
+      //     content: [{ type: "text", text: GEMINI_INTENT_SYSTEM_PROMPT }],
+      //   },
+      // ]}
     >
       <div className="h-screen">
         <MessageThreadFull className="max-w-4xl mx-auto" />
