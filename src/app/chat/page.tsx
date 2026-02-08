@@ -1,7 +1,7 @@
-"use client";
+// "use client";
 
 import { ChatClient } from "@/app/chat/chat-client";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/app/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function ChatPage() {
@@ -14,7 +14,7 @@ export default async function ChatPage() {
     redirect("/login");
   }
 
-  const hasTamboApiKey = !!process.env.TAMBO_API_KEY;
+  const hasTamboApiKey = !!process.env.NEXT_PUBLIC_TAMBO_API_KEY;
 
   if (!hasTamboApiKey) {
     return (

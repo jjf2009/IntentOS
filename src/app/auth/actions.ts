@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerActionClient } from "@/lib/supabase/server";
+import { createSupabaseServerActionClient } from "@/app/supabase/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 

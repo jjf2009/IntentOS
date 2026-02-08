@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/app/supabase/server";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -147,11 +147,11 @@ function getFirstUserMessageText(messages: Array<{ role: string; content: any }>
     if (msg.role !== "user") continue;
     const text = Array.isArray(msg.content)
       ? msg.content
-          .filter(isTextPart)
-          .map((part) => part.text)
-          .filter(Boolean)
-          .join(" ")
-          .trim()
+        .filter(isTextPart)
+        .map((part) => part.text)
+        .filter(Boolean)
+        .join(" ")
+        .trim()
       : "";
     if (text) return text;
   }
@@ -382,21 +382,21 @@ async function handleThreadMessagesCreate(
 
   const body = (await request.json().catch(() => null)) as
     | {
-        role?: "user" | "assistant" | "system" | "tool";
-        content?: unknown;
-        additionalContext?: Record<string, unknown>;
-        component?: Record<string, unknown>;
-        componentState?: Record<string, unknown>;
-        toolCallRequest?: Record<string, unknown>;
-        tool_calls?: unknown[];
-        tool_call_id?: string;
-        parentMessageId?: string;
-        reasoning?: unknown;
-        reasoningDurationMS?: number;
-        error?: string;
-        isCancelled?: boolean;
-        metadata?: Record<string, unknown>;
-      }
+      role?: "user" | "assistant" | "system" | "tool";
+      content?: unknown;
+      additionalContext?: Record<string, unknown>;
+      component?: Record<string, unknown>;
+      componentState?: Record<string, unknown>;
+      toolCallRequest?: Record<string, unknown>;
+      tool_calls?: unknown[];
+      tool_call_id?: string;
+      parentMessageId?: string;
+      reasoning?: unknown;
+      reasoningDurationMS?: number;
+      error?: string;
+      isCancelled?: boolean;
+      metadata?: Record<string, unknown>;
+    }
     | null;
 
   if (!body) return jsonError("Invalid JSON body", 400);
