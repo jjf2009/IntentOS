@@ -1,10 +1,9 @@
-import { ApiKeyCheck } from "@/components/ApiKeyCheck";
+
 import Footer from "@/components/Footer";
 import AboutSection from "@/components/hero/AboutSection";
 import FAQSection from "@/components/hero/FAQSection";
 import Hero from "@/components/hero/Hero";
 import Navbar from "@/components/Navbar";
-import Image from "next/image";
 
 const KeyFilesSection = () => (
   <div className="bg-white px-8 py-4">

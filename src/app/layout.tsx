@@ -18,6 +18,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Page title */}
+        <title>IndentOS</title>
+
+        {/* Favicon / logo */}
+        <link rel="icon" href="/logo.png" type="image/png" />
+
+        {/* Optional meta tags */}
+        <meta name="description" content="Sign up and explore our app!" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
