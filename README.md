@@ -1,14 +1,14 @@
-# IndentOS
+# IntentOS
 
-**An AI-powered intent-driven operating system that understands what you want to do and generates intelligent workflows to help you achieve it.**
+**An AI-powered intent-driven interface that understands what you want to do and generates intelligent workflows to help you achieve it.**
 
-IndentOS is a next-generation interface built on [Tambo AI](https://tambo.co) that bridges the gap between user intent and action. Instead of navigating through menus and clicking buttons, you simply express your intent in natural language, and IndentOS orchestrates the necessary steps, components, and tools to accomplish your goal.
+IntentOS is a next-generation interface built on [Tambo AI](https://tambo.co) that bridges the gap between user intent and action. Instead of navigating through menus and clicking buttons, you simply express your intent in natural language, and IntentOS orchestrates the necessary steps, components, and tools to accomplish your goal.
 
 ---
 
-## 🌟 What is IndentOS?
+## 🌟 What is IntentOS?
 
-IndentOS reimagines how users interact with software by:
+IntentOS reimagines how users interact with software by:
 
 - **Understanding Intent**: Uses advanced AI to comprehend what users actually want to accomplish
 - **Generating Workflows**: Automatically creates step-by-step workflows tailored to user goals
@@ -18,11 +18,11 @@ IndentOS reimagines how users interact with software by:
 
 ### Key Concepts
 
-**Intent-Driven Design**: Rather than building fixed UI flows, IndentOS dynamically generates workflows based on user intent. The AI interprets what you want and creates a personalized path to achieve it.
+**Intent-Driven Design**: Rather than building fixed UI flows, IntentOS dynamically generates workflows based on user intent. The AI interprets what you want and creates a personalized path to achieve it.
 
 **Generative UI**: Components are generated on-the-fly by AI based on the conversation context, creating adaptive interfaces that respond to user needs.
 
-**Tool Integration**: IndentOS can invoke various tools and services (APIs, databases, external systems) to accomplish tasks, making it a powerful orchestration layer.
+**Tool Integration**: IntentOS can invoke various tools and services (APIs, databases, external systems) to accomplish tasks, making it a powerful orchestration layer.
 
 ---
 
@@ -99,7 +99,7 @@ IndentOS reimagines how users interact with software by:
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd IndentOS
+   cd IntentOS
    ```
 
 2. **Install dependencies**
@@ -135,7 +135,7 @@ IndentOS reimagines how users interact with software by:
 ## 📂 Project Structure
 
 ```
-IndentOS/
+IntentOS/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── auth/              # Authentication pages
@@ -253,7 +253,7 @@ The `TamboProvider` wraps your app and provides AI capabilities:
 
 ### 4. Intent Workflow Generation
 
-When a user expresses intent (e.g., "I want to plan a trip to Japan"), IndentOS:
+When a user expresses intent (e.g., "I want to plan a trip to Japan"), IntentOS:
 1. **Analyzes the intent** using AI
 2. **Breaks down the goal** into actionable steps
 3. **Generates a workflow** with elicitation forms, tasks, and timeline
@@ -365,7 +365,7 @@ Connect to external tools and resources:
 
 ## 🌐 Authentication
 
-IndentOS uses Supabase for authentication:
+IntentOS uses Supabase for authentication:
 
 - **Signup**: `/signup` - Create a new account
 - **Login**: `/login` - Sign in to existing account
@@ -410,7 +410,7 @@ This project is built using the Tambo template. Check individual dependencies fo
 
 ## 🚀 What's Next?
 
-IndentOS is a foundation for building intent-driven applications. You can:
+IntentOS is a foundation for building intent-driven applications. You can:
 
 - **Add more workflows** for different use cases (travel planning, task management, etc.)
 - **Integrate with external APIs** to expand capabilities
@@ -418,4 +418,4 @@ IndentOS is a foundation for building intent-driven applications. You can:
 - **Build on the authentication** to add user profiles and data persistence
 - **Deploy to production** using Vercel, Netlify, or your preferred host
 
-**Start building the future of human-computer interaction with IndentOS!** 🎉
+**Start building the future of human-computer interaction with IntentOS!** 🎉
