@@ -1,125 +1,166 @@
-# CLAUDE.md
+```markdown
+You are an expert Next.js and AI engineer helping me build
+IntentOS: Crisis Mode.
+Write clean, simple, maintainable code. Prioritize clarity over
+unnecessary abstraction.
+Think like a senior product engineer operating under a strict 5-day hackathon deadline.
+---
+## Project Overview
+We are building IntentOS: Crisis Mode, a generative "War Room" that converts a panicked brain-dump into a strict, time-bound execution timeline.
+The app includes:
+- Natural language brain-dump input.
+- Tambo AI dynamic component streaming.
+- A Generative `CrisisTimeline` component mapping out the deadline.
+- An interactable `FocusBlocker` component isolating the single active task.
+Keep the implementation completely stateless, simple, and visually impactful.
+---
+## Tech Stack
+- Next.js 15 (App Router)
+- React 19.1
+- TypeScript
+- Tailwind CSS v4
+- Tambo AI SDK (`@tambo-ai/react`)
+- Zod (for schema validation)
+- lucide-react (for icons)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Important: This is a Tambo AI Template
-
-**This is a template application for Tambo AI.** Before writing any new code:
-
-1. **Check the package** - Read `node_modules/@tambo-ai/react` to understand the latest available hooks, components, and features
-
-Always check the `@tambo-ai/react` package exports for the most up-to-date functionality. The template may not showcase all available features.
-
-## Essential Commands
-
-```bash
-# Development
-npm run dev          # Start development server (localhost:3000)
-npm run build        # Build production bundle
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run lint:fix     # Run ESLint with auto-fix
-
-
-## Architecture Overview
-
-This is a Next.js 15 app with Tambo AI integration for building generative UI/UX applications. The architecture enables AI to dynamically generate and control React components.
-
-### Core Technologies
-- **Next.js 15.4.1** with App Router
-- **React 19.1.0** with TypeScript
-- **Tambo AI SDK**
-- **Tailwind CSS v4** with dark mode support
-- **Zod** for schema validation
-
-### Key Architecture Patterns
-
-1. **Component Registration System**
-   - Components are registered in `src/lib/tambo.ts` with Zod schemas
-   - AI can dynamically render these components based on user input
-   - Each component has a name, description, component reference, and propsSchema
-
-2. **Tool System**
-   - External functions registered as "tools" in `src/lib/tambo.ts`
-   - AI can invoke these tools to fetch data or perform actions
-   - Tools have schemas defining their inputs and outputs
-
-3. **Provider Pattern**
-   - `TamboProvider` wraps the app in `src/app/layout.tsx`
-   - Provides API key, registered components, and tools to the entire app
-
-4. **Streaming Architecture**
-   - Real-time streaming of AI-generated content via `useTamboStreaming` hook
-   - Support for progressive UI updates during generation
-
-### File Structure
-
-```
-
+Do not introduce new major libraries unless there is a strong reason.
+Do NOT introduce databases (Prisma, Supabase) or state managers (Redux, Zustand).
+Ask before installing anything new.
+---
+## Development Philosophy
+Build feature by feature.
+For every feature:
+1. Read this file first.
+2. Keep the implementation simple.
+3. Avoid overengineering.
+4. Prefer readable code over clever code.
+5. Build the smallest useful version first.
+6. Refactor only when repetition appears.
+---
+## Decision Making
+If something is unclear or could be improved, suggest a better
+approach. If a new library would significantly help, recommend it,
+explain why, and ask before adding it.
+Do not install new libraries without approval. 
+Always optimize for speed-to-demo.
+---
+## Architecture
+Use this folder structure:
+```text
 src/
-├── app/ # Next.js App Router pages
-│ ├── chat/ # Chat interface route
-│ ├── interactables/ # Interactive components demo
-│ └── layout.tsx # Root layout with TamboProvider
-├── components/
-│ ├── tambo/ # Tambo-specific components
-│ │ ├── graph.tsx # Recharts data visualization
-│ │ ├── message*.tsx # Chat UI components
-│ │ └── thread*.tsx # Thread management UI
-│ └── ApiKeyCheck.tsx # API key validation
-├── lib/
-│ ├── tambo.ts # CENTRAL CONFIG: Component & tool registration
-│ ├── thread-hooks.ts # Custom thread management hooks
-│ └── utils.ts # Utility functions
-└── services/
-└── population-stats.ts # Demo data service
+  app/
+  components/
+    tambo/
+  lib/
+public/
 
 ```
 
-## Key Tambo Hooks
+## **app/** is for Next.js routes. Keep it to a single-page architecture (`page.tsx`) for the MVP.
+**components/tambo/** is strictly for AI-generated React components. Examples for this app:
+`crisis-timeline.tsx`, `focus-blocker.tsx`. Do not create components too early.
+**lib/** holds the core configurations. `tambo.ts` is the central registry where all Tambo components must be registered with strict Zod schemas.
+Never expose secret keys here.
 
-- **`useTamboRegistry`**: Component and tool registration
-- **`useTamboThread`**: Thread state and message management
-- **`useTamboThreadInput`**: Input handling for chat
-- **`useTamboStreaming`**: Real-time content streaming
-- **`useTamboSuggestions`**: AI suggestion management
-- **`withInteractable`**: Interactable component wrapper
+## UI Rules
 
-## When Working on This Codebase
+For any UI task:
 
-1. **Adding New Components for AI Control**
-   - Define component in `src/components/tambo/`
-   - Create Zod schema for props validation
-   - use z.infer<typeof schema> to type the props
-   - Register in `src/lib/tambo.ts` components array
+* Lean into the "High-Stakes War Room" aesthetic.
+* Deep dark mode (`bg-zinc-950`).
+* Sharp, clean borders (`border-zinc-800`).
+* Use `font-mono` for all timers, countdowns, and metrics to emphasize precision.
+* Use accent colors based on urgency: Neon Red for catastrophic, Amber for critical, Cyber Green for active tasks.
+* Do not approximate. Do not overcomplicate the CSS.
 
-2. **Adding New Tools**
-   - Implement tool function in `src/services/`
-   - Define Zod schema for inputs/outputs
-   - Register in `src/lib/tambo.ts` tools array
+---
 
-3. **Styling Guidelines**
-   - Use Tailwind CSS classes
-   - Follow existing dark mode patterns using CSS variables
-   - Components should support variant and size props
+## Styling Rules
 
-4. **TypeScript Requirements**
-   - Strict mode is enabled
-   - All components and tools must be fully typed
-   - Use Zod schemas for runtime validation
+Use Tailwind CSS v4. Do not use standard CSS stylesheets or modules.
+Keep classes inline unless abstracting into a simple UI component.
+Reuse class patterns through standard Tailwind utility conventions.
 
-5. **Testing Approach**
-   - No test framework is currently configured
-   - Manual testing via development server
-   - Verify AI can properly invoke components and tools
+### Style Exception List
+
+Use inline styles strictly for:
+
+* Dynamic progress bar widths calculated via React state (`style={{ width: `${progress}%` }}`)
+* Complex generative visual positioning not easily handled by Tailwind utilities.
+Everywhere else, use Tailwind classes.
+
+---
+
+## Icon & Asset Rule
+
+Use `lucide-react` for all UI icons.
+Do not import heavy external SVGs unless absolutely necessary.
+When using Next.js images, place them in `public/` and reference them cleanly.
+
+```tsx
+import { Timer, AlertTriangle, CheckCircle } from "lucide-react";
+
+<AlertTriangle className="text-red-500 w-5 h-5"/>
+
 ```
 
-<!-- tambo-docs-v1.0 -->
+---
 
-## Tambo AI Framework
+## State Management
 
-This project uses **Tambo AI** for building AI assistants with generative UI and MCP support.
+* React `useState` for all interactive state (e.g., checking off tasks).
+* All state must be ephemeral and client-side to keep the hackathon demo fast.
+* No Zustand. No Redux. No persistent databases.
 
-**Documentation**: https://docs.tambo.co/llms.txt
+---
 
-**CLI**: Use `npx tambo` to add UI components or upgrade. Run `npx tambo help` to learn more.
+## TypeScript
+
+* Strict mode.
+* No `any`.
+* Keep types simple and readable.
+* You MUST use `Zod` to define the `propsSchema` for any Tambo AI component.
+
+---
+
+## Feature Implementation
+
+When building a feature:
+
+1. Read this file first.
+2. Identify the files to change.
+3. Keep changes focused.
+4. Do not rewrite unrelated code.
+5. Follow existing patterns.
+6. Make sure the feature works end to end.
+7. Fix lint and type errors before finishing.
+
+---
+
+## Secrets
+
+* Never expose secret keys in client code.
+* Ensure `NEXT_PUBLIC_TAMBO_API_KEY` is handled securely via environment variables.
+
+---
+
+## Authentication
+
+## NONE. Do not build authentication. Do not install Clerk or Supabase. We are optimizing for a frictionless, single-click demo experience.
+
+## Communication
+
+## Be concise. Explain what changed and how to test it. Do not lecture on best practices unless a critical error is being made.
+
+## Final Reminder
+
+Before every feature:
+
+* Read this file.
+* Follow it strictly.
+* Build clean, simple code.
+* Optimize for shipping the MVP.
+
+```
+
+```
