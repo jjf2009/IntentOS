@@ -1,113 +1,42 @@
 /**
  * @file tambo.ts
- * @description Central configuration file for Tambo components and tools
+ * @description Central registry for Tambo AI components (AGENTS.md).
  *
- * This file serves as the central place to register your Tambo components and tools.
- * It exports arrays that will be used by the TamboProvider.
+ * Register ONLY generative components used by Crisis Mode here.
+ * Every Tambo component MUST have a strict Zod propsSchema.
  *
- * Read more about Tambo at https://tambo.co/docs
+ * Keep tools empty for MVP (no external services needed).
  */
 
-import { Graph, graphSchema } from "@/components/tambo/graph";
-import {
-  IntentWorkflow,
-  intentWorkflowSchema,
-} from "@/components/tambo/intent-workflow";
-import { DataCard, dataCardSchema } from "@/components/ui/card-data";
-import {
-  getCountryPopulations,
-  getGlobalPopulationTrend,
-} from "@/services/population-stats";
+import { CrisisTimeline, crisisTimelineSchema } from "@/components/tambo/crisis-timeline";
+import { FocusBlocker, focusBlockerSchema } from "@/components/tambo/focus-blocker";
 import type { TamboComponent } from "@tambo-ai/react";
 import { TamboTool } from "@tambo-ai/react";
 import { z } from "zod";
 
 /**
  * tools
- *
- * This array contains all the Tambo tools that are registered for use within the application.
- * Each tool is defined with its name, description, and expected props. The tools
- * can be controlled by AI to dynamically fetch data based on user interactions.
+ * No tools needed for Crisis Mode MVP (stateless generative timeline only).
  */
-
-export const tools: TamboTool[] = [
-  {
-    name: "countryPopulation",
-    description:
-      "A tool to get population statistics by country with advanced filtering options",
-    tool: getCountryPopulations,
-    inputSchema: z.object({
-      continent: z.string().optional(),
-      sortBy: z.enum(["population", "growthRate"]).optional(),
-      limit: z.number().optional(),
-      order: z.enum(["asc", "desc"]).optional(),
-    }),
-    outputSchema: z.array(
-      z.object({
-        countryCode: z.string(),
-        countryName: z.string(),
-        continent: z.enum([
-          "Asia",
-          "Africa",
-          "Europe",
-          "North America",
-          "South America",
-          "Oceania",
-        ]),
-        population: z.number(),
-        year: z.number(),
-        growthRate: z.number(),
-      }),
-    ),
-  },
-  {
-    name: "globalPopulation",
-    description:
-      "A tool to get global population trends with optional year range filtering",
-    tool: getGlobalPopulationTrend,
-    inputSchema: z.object({
-      startYear: z.number().optional(),
-      endYear: z.number().optional(),
-    }),
-    outputSchema: z.array(
-      z.object({
-        year: z.number(),
-        population: z.number(),
-        growthRate: z.number(),
-      }),
-    ),
-  },
-  // Add more tools here
-];
+export const tools: TamboTool[] = [];
 
 /**
  * components
- *
- * This array contains all the Tambo components that are registered for use within the application.
- * Each component is defined with its name, description, and expected props. The components
- * can be controlled by AI to dynamically render UI elements based on user interactions.
+ * Crisis Timeline + Focus Blocker will be registered here.
  */
 export const components: TamboComponent[] = [
   {
-    name: "IntentWorkflow",
+    name: "CrisisTimeline",
     description:
-      "A structured intent-driven workflow renderer (elicitation, timeline, tasks, progress) used for IntentOS demo flows.",
-    component: IntentWorkflow,
-    propsSchema: intentWorkflowSchema,
+      "Use this for any high-stakes crisis. Converts a brain dump into a strict time-bound execution timeline. Always return realistic blocks with minute durations that add up to the available time. Prefer 4-7 blocks. Mark urgency appropriately. Include tasks when they help execution.",
+    component: CrisisTimeline,
+    propsSchema: crisisTimelineSchema,
   },
   {
-    name: "Graph",
+    name: "FocusBlocker",
     description:
-      "A component that renders various types of charts (bar, line, pie) using Recharts. Supports customizable data visualization with labels, datasets, and styling options.",
-    component: Graph,
-    propsSchema: graphSchema,
+      "Use this when the user needs to isolate on a single active task from the timeline. Renders a high-focus isolation view with a live countdown timer, checklist, and controls to complete, extend time, or exit. Always tie the title and description to the currently active block.",
+    component: FocusBlocker,
+    propsSchema: focusBlockerSchema,
   },
-  {
-    name: "DataCard",
-    description:
-      "A component that displays options as clickable cards with links and summaries with the ability to select multiple items.",
-    component: DataCard,
-    propsSchema: dataCardSchema,
-  },
-  // Add more components here
 ];

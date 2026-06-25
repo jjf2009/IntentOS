@@ -16,7 +16,6 @@ import { Check, ChevronDown, ExternalLink, Loader2, X } from "lucide-react";
 import * as React from "react";
 import { useState } from "react";
 import { Streamdown } from "streamdown";
-import { parseIntentFromMessage } from "@/lib/intent/intent-contract";
 
 
 /**
@@ -236,14 +235,6 @@ function MessageContentRenderer({
   markdown: boolean;
 }) {
   const { message, isLoading } = useMessageContext();
-const intent = React.useMemo(
-  () => parseIntentFromMessage(message),
-  [message],
-);
-
-if (intent) {
-  return null;
-}
 
   if (!contentToRender) {
     return <span className="text-muted-foreground italic">Empty message</span>;
