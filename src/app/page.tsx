@@ -2,30 +2,96 @@
 
 import { useState } from "react";
 import { AlertTriangle, Timer, Send, RotateCcw } from "lucide-react";
+import { TamboProvider, useTambo, useTamboThreadInput } from "@tambo-ai/react";
+import { CrisisTimeline } from "@/components/tambo/crisis-timeline";
+import { FocusBlocker } from "@/components/tambo/focus-blocker";
+import { components, tools } from "@/lib/tambo";
 
 export default function CrisisWarRoom() {
+  const apiKey = process.env.NEXT_PUBLIC_TAMBO_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-200">
+        <div className="max-w-md text-center p-6 border border-zinc-800 rounded-xl bg-zinc-900">
+          <div className="text-red-500 font-medium mb-2 flex items-center justify-center gap-2">
+            <AlertTriangle className="w-5 h-5" /> Missing Tambo API Key
+          </div>
+          <div className="text-sm text-zinc-400">
+            Set <span className="font-mono bg-zinc-800 px-1 py-0.5 rounded">NEXT_PUBLIC_TAMBO_API_KEY</span> in your <span className="font-mono">.env.local</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <TamboProvider
+      apiKey={apiKey}
+      components={components}
+      tools={tools}
+      autoGenerateThreadName={false}
+    >
+      <WarRoomContent />
+    </TamboProvider>
+  );
+}
+
+function WarRoomContent() {
   const [brainDump, setBrainDump] = useState("");
   const [submittedDump, setSubmittedDump] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [focusedBlock, setFocusedBlock] = useState<{ title: string; description: string; durationMinutes?: number; checklist?: string[] } | null>(null);
+
+  const { setValue, submit } = useTamboThreadInput();
+  const { thread, isIdle } = useTambo();
+  const isGenerating = !isIdle;
 
   const hasContent = brainDump.trim().length > 0;
 
+  // Simple extractor for assistant message text (no extra deps)
+  function getTextFromContent(content: unknown): string {
+    if (!content) return "";
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .filter((part: any) => part?.type === "text")
+        .map((part: any) => part.text || "")
+        .join("");
+    }
+    return "";
+  }
+
+  const assistantMessages = (thread?.messages || []).filter((m: any) => m.role === "assistant");
+  const lastAssistant = assistantMessages[assistantMessages.length - 1];
+  const responseText = lastAssistant ? getTextFromContent(lastAssistant.content) : "";
+
   async function handleLaunch() {
-    if (!hasContent || isAnalyzing) return;
+    if (!hasContent || isGenerating) return;
 
-    setIsAnalyzing(true);
+    const dumpText = brainDump.trim();
+    setSubmittedDump(dumpText);
 
-    // Smallest simulation of analysis (Module 3 will replace with real Tambo)
-    await new Promise((resolve) => setTimeout(resolve, 650));
+    // Send to Tambo AI — strongly encourage using the registered CrisisTimeline component
+    const prompt = `CRISIS MODE BRAIN DUMP: ${dumpText}
 
-    setSubmittedDump(brainDump.trim());
-    setIsAnalyzing(false);
-    // Keep the text in textarea for easy re-edit; user can clear manually
+You must respond by using the CrisisTimeline component. Create a realistic, strict, minute-by-minute execution timeline. Blocks should have clear titles, durations in minutes, short descriptions, and optional tasks. Use urgency levels. The total durations should roughly match the available time.`;
+
+    setValue(prompt);
+    try {
+      await submit({ streamResponse: true });
+    } catch (err) {
+      console.error("Failed to send to Tambo:", err);
+    }
   }
 
   function handleReset() {
     setSubmittedDump("");
     setBrainDump("");
+    setFocusedBlock(null);
+  }
+
+  function activateFocus(block: { title: string; description: string; durationMinutes?: number; checklist?: string[] }) {
+    setFocusedBlock(block);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -88,7 +154,7 @@ export default function CrisisWarRoom() {
               onKeyDown={handleKeyDown}
               className="w-full min-h-[128px] resize-y bg-transparent text-lg placeholder:text-zinc-600 focus:outline-none font-light leading-snug"
               placeholder="Client presentation in 75 minutes. Zero slides started. Data scattered across 4 emails + Notion. Boss already in the room. Need to pull numbers, write deck, and rehearse..."
-              disabled={isAnalyzing}
+              disabled={isGenerating}
             />
 
             <div className="mt-3 flex items-center justify-between">
@@ -109,13 +175,13 @@ export default function CrisisWarRoom() {
 
                 <button
                   onClick={handleLaunch}
-                  disabled={!hasContent || isAnalyzing}
+                  disabled={!hasContent || isGenerating}
                   className="inline-flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950 px-5 py-2 text-sm font-medium text-red-400 hover:bg-red-950/80 active:bg-red-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isAnalyzing ? (
+                  {isGenerating ? (
                     <>
                       <Timer className="w-4 h-4 animate-pulse" />
-                      ANALYZING SITUATION...
+                      GENERATING...
                     </>
                   ) : (
                     <>
@@ -154,18 +220,130 @@ export default function CrisisWarRoom() {
                 {submittedDump}
               </div>
 
-              <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-8 min-h-[140px] flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-lg font-medium text-zinc-400">CrisisTimeline loading...</div>
-                  <div className="text-xs text-zinc-500 mt-1 font-mono">
-                    Tambo AI will stream the time-bound execution plan here
+              {/* Generative component + fallback text (Module 4) */}
+              {(() => {
+                // Find if latest assistant message has a rendered CrisisTimeline
+                const lastWithComponent = [...(thread?.messages || [])]
+                  .reverse()
+                  .find((m: any) => m.role === "assistant" && m.renderedComponent);
+
+                if (lastWithComponent?.renderedComponent) {
+                  return (
+                    <div className="mt-4">
+                      <div className="text-xs uppercase tracking-widest text-emerald-500 mb-2 font-mono">
+                        GENERATED TIMELINE
+                      </div>
+                      {lastWithComponent.renderedComponent}
+                    </div>
+                  );
+                }
+
+                if (isGenerating) {
+                  return (
+                    <div className="text-amber-500 flex items-center gap-2 text-sm font-mono mt-4">
+                      <Timer className="w-4 h-4 animate-pulse" /> GENERATING TIMELINE FROM TAMBO...
+                    </div>
+                  );
+                }
+
+                if (responseText) {
+                  return (
+                    <div className="mt-4">
+                      <div className="text-xs uppercase tracking-widest text-emerald-500 mb-1 font-mono">AI RESPONSE</div>
+                      <div className="text-sm text-zinc-300 whitespace-pre-wrap border-l-2 border-emerald-600 pl-3">
+                        {responseText}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
+
+              {/* TEMPORARY HARDCODED SAMPLE — visual verification only (remove in later modules) */}
+              {submittedDump && (
+                <div className="mt-6">
+                  <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-mono">
+                    VISUAL SAMPLE (hardcoded for testing)
+                  </div>
+                  <CrisisTimeline
+                    deadlineMinutes={90}
+                    summary="Board presentation in 90 minutes — zero prep"
+                    blocks={[
+                      {
+                        id: "b1",
+                        title: "Data pull & key metrics",
+                        durationMinutes: 15,
+                        description: "Grab the 4 critical numbers from email and Notion.",
+                        tasks: ["Open emails", "Copy Q3 numbers", "Verify with finance"],
+                        urgency: "critical",
+                      },
+                      {
+                        id: "b2",
+                        title: "Build slide deck skeleton",
+                        durationMinutes: 25,
+                        description: "Create 8-slide structure with titles and placeholders.",
+                        urgency: "active",
+                      },
+                      {
+                        id: "b3",
+                        title: "Populate & design slides",
+                        durationMinutes: 30,
+                        description: "Fill content, charts, and minimal visuals.",
+                        urgency: "active",
+                      },
+                      {
+                        id: "b4",
+                        title: "Rehearse + final polish",
+                        durationMinutes: 20,
+                        description: "Run through once, fix glaring issues, print notes.",
+                        urgency: "catastrophic",
+                      },
+                    ]}
+                  />
+
+                  {/* FocusBlocker demo - activate one block to simulate isolation */}
+                  <div className="mt-6">
+                    <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-mono">
+                      FOCUS BLOCKER SAMPLE (clicking a block in timeline would activate this)
+                    </div>
+                    <FocusBlocker
+                      id="focus-demo-1"
+                      title="Populate & design slides"
+                      durationMinutes={30}
+                      description="Fill content, charts, and minimal visuals for the 8 slides."
+                      checklist={[
+                        "Add key metrics to slide 3",
+                        "Create simple bar chart",
+                        "Write speaker notes",
+                        "Align branding on all slides",
+                      ]}
+                    />
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="mt-3 text-[10px] text-zinc-500 font-mono">
-                Next: Tambo integration will replace this placeholder with live generative components.
-              </div>
+              {/* Basic activation demo for flow (m6) - simulates clicking timeline block */}
+              {submittedDump && !focusedBlock && (
+                <div className="mt-4 flex gap-2 text-xs">
+                  <button onClick={() => activateFocus({ title: "Data pull & key metrics", description: "Grab the 4 critical numbers from email and Notion.", durationMinutes: 15, checklist: ["Open emails", "Copy Q3 numbers"] })} className="px-3 py-1 bg-zinc-800 rounded border border-zinc-700 hover:bg-zinc-900">Focus on B1</button>
+                  <button onClick={() => activateFocus({ title: "Rehearse + final polish", description: "Run through once, fix glaring issues.", durationMinutes: 20 })} className="px-3 py-1 bg-zinc-800 rounded border border-zinc-700 hover:bg-zinc-900">Focus on B4</button>
+                </div>
+              )}
+
+              {focusedBlock && (
+                <div className="mt-6">
+                  <div className="text-xs uppercase tracking-widest text-emerald-500 mb-2 font-mono">ACTIVE FOCUS</div>
+                  <FocusBlocker
+                    id={`focus-${focusedBlock.title}`}
+                    title={focusedBlock.title}
+                    durationMinutes={focusedBlock.durationMinutes}
+                    description={focusedBlock.description}
+                    checklist={focusedBlock.checklist}
+                  />
+                  <button onClick={() => setFocusedBlock(null)} className="mt-2 text-xs text-zinc-500 hover:text-white">← Back to Timeline</button>
+                </div>
+              )}
             </div>
           )}
         </div>
