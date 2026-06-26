@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Timer, Send, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Timer, AlertTriangle } from "lucide-react";
+import gsap from "gsap";
 import { TamboProvider, useTambo, useTamboThreadInput } from "@tambo-ai/react";
 import { CrisisTimeline } from "@/components/tambo/crisis-timeline";
 import { FocusBlocker } from "@/components/tambo/focus-blocker";
@@ -12,13 +13,13 @@ export default function CrisisWarRoom() {
 
   if (!apiKey) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-200">
-        <div className="max-w-md text-center p-6 border border-zinc-800 rounded-xl bg-zinc-900">
-          <div className="text-red-500 font-medium mb-2 flex items-center justify-center gap-2">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-canvas)", color: "var(--text-primary)" }}>
+        <div className="max-w-md text-center p-6 card">
+          <div className="font-medium mb-2 flex items-center justify-center gap-2" style={{ color: "var(--accent-primary)" }}>
             <AlertTriangle className="w-5 h-5" /> Missing Tambo API Key
           </div>
-          <div className="text-sm text-zinc-400">
-            Set <span className="font-mono bg-zinc-800 px-1 py-0.5 rounded">NEXT_PUBLIC_TAMBO_API_KEY</span> in your <span className="font-mono">.env.local</span>
+          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Set <span className="font-mono" style={{ background: "var(--bg-hover)", padding: "1px 4px", borderRadius: "3px" }}>NEXT_PUBLIC_TAMBO_API_KEY</span> in your <span className="font-mono">.env.local</span>
           </div>
         </div>
       </div>
@@ -40,11 +41,49 @@ export default function CrisisWarRoom() {
 function WarRoomContent() {
   const [brainDump, setBrainDump] = useState("");
   const [submittedDump, setSubmittedDump] = useState("");
-  const [focusedBlock, setFocusedBlock] = useState<{ title: string; description: string; durationMinutes?: number; checklist?: string[] } | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const { setValue, submit } = useTamboThreadInput();
   const { thread, isIdle } = useTambo();
   const isGenerating = !isIdle;
+
+  // Refs for GSAP animations (per AGENTS.md)
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const subRef = useRef<HTMLParagraphElement>(null);
+  const examplesRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Hero entrance animation (subtle, respects reduced motion)
+  useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return;
+
+    const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
+
+    if (headlineRef.current) {
+      tl.fromTo(headlineRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.9 });
+    }
+    if (subRef.current) {
+      tl.fromTo(subRef.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, "-=0.5");
+    }
+    if (examplesRef.current) {
+      tl.fromTo(examplesRef.current, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, "-=0.3");
+    }
+  }, []);
+
+  // Animate canvas when content appears
+  useEffect(() => {
+    if (submittedDump && canvasRef.current) {
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!prefersReduced) {
+        gsap.fromTo(
+          canvasRef.current,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }
+        );
+      }
+    }
+  }, [submittedDump]);
 
   const hasContent = brainDump.trim().length > 0;
 
@@ -74,24 +113,30 @@ function WarRoomContent() {
     // Send to Tambo AI — strongly encourage using the registered CrisisTimeline component
     const prompt = `CRISIS MODE BRAIN DUMP: ${dumpText}
 
-You must respond by using the CrisisTimeline component. Create a realistic, strict, minute-by-minute execution timeline. Blocks should have clear titles, durations in minutes, short descriptions, and optional tasks. Use urgency levels. The total durations should roughly match the available time.`;
+You MUST respond using the CrisisTimeline component.
+
+Rules:
+- Always provide a non-empty "blocks" array (at least 3 items).
+- Each block must have: id (string), title, durationMinutes (number), description.
+- Optional but recommended: tasks (array of strings), urgency ("catastrophic" | "critical" | "active").
+- The sum of all durationMinutes should be close to the total available time.
+- Make the plan realistic and actionable for a last-minute crisis.
+
+Output ONLY via the CrisisTimeline component. Do not return plain text.`;
 
     setValue(prompt);
+    setSendError(null);
     try {
       await submit({ streamResponse: true });
     } catch (err) {
       console.error("Failed to send to Tambo:", err);
+      setSendError("Failed to generate plan. Please try again or adjust your description.");
     }
   }
 
   function handleReset() {
     setSubmittedDump("");
     setBrainDump("");
-    setFocusedBlock(null);
-  }
-
-  function activateFocus(block: { title: string; description: string; durationMinutes?: number; checklist?: string[] }) {
-    setFocusedBlock(block);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -102,255 +147,150 @@ You must respond by using the CrisisTimeline component. Create a realistic, stri
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col">
-      {/* High-stakes header */}
-      <header className="border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-canvas)", color: "var(--text-primary)" }}>
+      {/* Header */}
+      <header className="border-b border-[rgba(170,186,174,0.2)] sticky top-0 z-50" style={{ background: "var(--bg-canvas)" }}>
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center">
-              <span className="text-white text-sm font-bold tracking-tighter">CR</span>
+            <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: "var(--accent-primary)" }}>
+              <span className="text-[var(--bg-canvas)] text-sm font-bold tracking-tighter">IC</span>
             </div>
-            <div>
-              <div className="font-semibold tracking-tight">IntentOS</div>
-              <div className="text-[10px] text-red-500 -mt-1">CRISIS MODE</div>
-            </div>
+            <div className="font-semibold tracking-tight font-display">IntentOS</div>
+            <div className="text-xs tracking-[0.05em]" style={{ color: "var(--accent-muted)" }}>CRISIS MODE</div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs uppercase tracking-[2px] text-zinc-500 font-mono">
+          <div className="flex items-center gap-4 text-xs tracking-[0.05em] font-mono" style={{ color: "var(--text-muted)" }}>
             <div className="flex items-center gap-1.5">
               <Timer className="w-3.5 h-3.5" />
               <span>EXECUTION WINDOW</span>
             </div>
-            <div className="h-px w-8 bg-zinc-800" />
-            <span className="text-amber-500">STRICT • TIME-BOUND</span>
+            <div className="h-px w-8" style={{ background: "rgba(170,186,174,0.3)" }} />
+            <span>STRICT • TIME-BOUND</span>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 flex-1 w-full pt-8 pb-12">
-        {/* Title / context */}
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs tracking-widest text-zinc-400 mb-3">
-            <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-            HIGH-STAKES WAR ROOM
-          </div>
-          <h1 className="text-4xl font-semibold tracking-tighter">Turn panic into action.</h1>
-          <p className="mt-2 max-w-xl text-zinc-400">
-            Dump everything. Get a strict, minute-precise execution timeline. Focus on one thing at a time.
+      <div className="max-w-5xl mx-auto px-6 flex-1 w-full pt-10 pb-16">
+        {/* Hero */}
+        <div className="mb-10">
+          <div className="chip chip-primary mb-3">last-minute rescue</div>
+          <h1 ref={headlineRef} className="font-display text-5xl tracking-[-1px] leading-none mb-3">Turn panic into a plan.</h1>
+          <p ref={subRef} className="max-w-md text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Dump everything. Tambo AI generates a precise, time-bound execution timeline. Focus on one thing at a time.
           </p>
+        </div>
+
+        {/* Examples */}
+        <div ref={examplesRef} className="mb-4 flex flex-wrap gap-2 text-xs">
+          {[
+            "Client deck due in 90 minutes",
+            "Final exam tomorrow at 9am",
+            "Investor pitch in 3 hours",
+          ].map((ex, i) => (
+            <button
+              key={i}
+              onClick={() => setBrainDump(ex)}
+              className="chip chip-neutral hover:border-[var(--accent-neutral)] cursor-pointer"
+            >
+              {ex}
+            </button>
+          ))}
         </div>
 
         {/* Brain-dump input */}
         <div className="mb-8">
           <div className="mb-2 flex items-baseline justify-between text-sm">
-            <div className="font-medium text-zinc-300">BRAIN DUMP</div>
-            <div className="text-[10px] font-mono text-zinc-500">NATURAL LANGUAGE • CMD/CTRL + ENTER TO LAUNCH</div>
+            <div style={{ color: "var(--text-secondary)" }}>BRAIN DUMP</div>
+            <div className="text-[10px] font-mono tracking-[0.05em]" style={{ color: "var(--text-muted)" }}>NATURAL LANGUAGE • CMD/CTRL + ENTER</div>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <div className="card p-5">
             <textarea
               value={brainDump}
               onChange={(e) => setBrainDump(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full min-h-[128px] resize-y bg-transparent text-lg placeholder:text-zinc-600 focus:outline-none font-light leading-snug"
-              placeholder="Client presentation in 75 minutes. Zero slides started. Data scattered across 4 emails + Notion. Boss already in the room. Need to pull numbers, write deck, and rehearse..."
+              className="w-full min-h-[110px] resize-y bg-transparent text-lg placeholder:text-[var(--text-muted)] focus:outline-none leading-snug"
+              placeholder="I have a board presentation in 90 minutes. No slides. Key metrics scattered across 4 emails..."
               disabled={isGenerating}
             />
 
             <div className="mt-3 flex items-center justify-between">
-              <div className="text-[10px] font-mono text-zinc-500">
+              <div className="text-[10px] font-mono tracking-[0.05em]" style={{ color: "var(--text-muted)" }}>
                 {brainDump.length} chars
               </div>
 
               <div className="flex gap-2">
                 {submittedDump && (
-                  <button
-                    onClick={handleReset}
-                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 active:bg-zinc-950"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    NEW CRISIS
+                  <button onClick={handleReset} className="btn-ghost text-sm">
+                    new crisis
                   </button>
                 )}
 
                 <button
                   onClick={handleLaunch}
                   disabled={!hasContent || isGenerating}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950 px-5 py-2 text-sm font-medium text-red-400 hover:bg-red-950/80 active:bg-red-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="btn-primary disabled:opacity-50"
                 >
-                  {isGenerating ? (
-                    <>
-                      <Timer className="w-4 h-4 animate-pulse" />
-                      GENERATING...
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="w-4 h-4" />
-                      LAUNCH WAR ROOM
-                      <Send className="w-3.5 h-3.5" />
-                    </>
-                  )}
+                  {isGenerating ? "generating..." : "launch rescue plan"}
                 </button>
               </div>
+              {sendError && (
+                <div className="mt-2 text-xs" style={{ color: "var(--accent-primary)" }}>
+                  {sendError}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* War Room Canvas */}
+        {/* Generative Canvas */}
         <div>
           <div className="mb-2 flex items-baseline justify-between text-sm">
-            <div className="font-medium text-zinc-300">WAR ROOM CANVAS</div>
-            <div className="text-[10px] font-mono text-zinc-500">GENERATIVE TIMELINE • FOCUS BLOCKER</div>
+            <div style={{ color: "var(--text-secondary)" }}>RESCUE PLAN</div>
+            <div className="text-[10px] font-mono tracking-[0.05em]" style={{ color: "var(--text-muted)" }}>GENERATIVE • TIMELINE + FOCUS</div>
           </div>
 
           {!submittedDump ? (
-            <div className="min-h-[260px] rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 flex items-center justify-center">
-              <div className="text-center text-zinc-500">
-                <div className="text-sm">Enter a brain dump above and launch to generate the timeline.</div>
-                <div className="mt-1 text-[10px] font-mono">CrisisTimeline will appear here (Module 4+)</div>
-              </div>
+            <div className="card min-h-[220px] p-8 flex items-center justify-center text-center" style={{ color: "var(--text-muted)" }}>
+              Enter a last-minute crisis above and launch to generate your timeline.
             </div>
           ) : (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-              <div className="text-xs uppercase tracking-widest text-amber-500 mb-1 font-mono">
+            <div className="card p-6">
+              <div className="text-xs tracking-[0.05em] mb-1" style={{ color: "var(--accent-muted)" }}>
                 SITUATION LOGGED
               </div>
 
-              <div className="text-sm text-zinc-300 whitespace-pre-wrap mb-4 border-l-2 border-amber-600 pl-3">
+              <div className="text-[15px] leading-relaxed mb-5" style={{ color: "var(--text-secondary)" }}>
                 {submittedDump}
               </div>
 
-              {/* Generative component + fallback text (Module 4) */}
+              {/* Generative content from Tambo */}
               {(() => {
-                // Find if latest assistant message has a rendered CrisisTimeline
                 const lastWithComponent = [...(thread?.messages || [])]
                   .reverse()
                   .find((m: any) => m.role === "assistant" && m.renderedComponent);
 
                 if (lastWithComponent?.renderedComponent) {
-                  return (
-                    <div className="mt-4">
-                      <div className="text-xs uppercase tracking-widest text-emerald-500 mb-2 font-mono">
-                        GENERATED TIMELINE
-                      </div>
-                      {lastWithComponent.renderedComponent}
-                    </div>
-                  );
+                  return <div className="mt-2">{lastWithComponent.renderedComponent}</div>;
                 }
 
                 if (isGenerating) {
-                  return (
-                    <div className="text-amber-500 flex items-center gap-2 text-sm font-mono mt-4">
-                      <Timer className="w-4 h-4 animate-pulse" /> GENERATING TIMELINE FROM TAMBO...
-                    </div>
-                  );
+                  return <div className="py-6 text-center" style={{ color: "var(--accent-muted)" }}>Generating your rescue plan…</div>;
                 }
 
                 if (responseText) {
-                  return (
-                    <div className="mt-4">
-                      <div className="text-xs uppercase tracking-widest text-emerald-500 mb-1 font-mono">AI RESPONSE</div>
-                      <div className="text-sm text-zinc-300 whitespace-pre-wrap border-l-2 border-emerald-600 pl-3">
-                        {responseText}
-                      </div>
-                    </div>
-                  );
+                  return <div className="text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{responseText}</div>;
                 }
 
-                return null;
+                return <div className="py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>Waiting for AI response…</div>;
               })()}
-
-              {/* TEMPORARY HARDCODED SAMPLE — visual verification only (remove in later modules) */}
-              {submittedDump && (
-                <div className="mt-6">
-                  <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-mono">
-                    VISUAL SAMPLE (hardcoded for testing)
-                  </div>
-                  <CrisisTimeline
-                    deadlineMinutes={90}
-                    summary="Board presentation in 90 minutes — zero prep"
-                    blocks={[
-                      {
-                        id: "b1",
-                        title: "Data pull & key metrics",
-                        durationMinutes: 15,
-                        description: "Grab the 4 critical numbers from email and Notion.",
-                        tasks: ["Open emails", "Copy Q3 numbers", "Verify with finance"],
-                        urgency: "critical",
-                      },
-                      {
-                        id: "b2",
-                        title: "Build slide deck skeleton",
-                        durationMinutes: 25,
-                        description: "Create 8-slide structure with titles and placeholders.",
-                        urgency: "active",
-                      },
-                      {
-                        id: "b3",
-                        title: "Populate & design slides",
-                        durationMinutes: 30,
-                        description: "Fill content, charts, and minimal visuals.",
-                        urgency: "active",
-                      },
-                      {
-                        id: "b4",
-                        title: "Rehearse + final polish",
-                        durationMinutes: 20,
-                        description: "Run through once, fix glaring issues, print notes.",
-                        urgency: "catastrophic",
-                      },
-                    ]}
-                  />
-
-                  {/* FocusBlocker demo - activate one block to simulate isolation */}
-                  <div className="mt-6">
-                    <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-mono">
-                      FOCUS BLOCKER SAMPLE (clicking a block in timeline would activate this)
-                    </div>
-                    <FocusBlocker
-                      id="focus-demo-1"
-                      title="Populate & design slides"
-                      durationMinutes={30}
-                      description="Fill content, charts, and minimal visuals for the 8 slides."
-                      checklist={[
-                        "Add key metrics to slide 3",
-                        "Create simple bar chart",
-                        "Write speaker notes",
-                        "Align branding on all slides",
-                      ]}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Basic activation demo for flow (m6) - simulates clicking timeline block */}
-              {submittedDump && !focusedBlock && (
-                <div className="mt-4 flex gap-2 text-xs">
-                  <button onClick={() => activateFocus({ title: "Data pull & key metrics", description: "Grab the 4 critical numbers from email and Notion.", durationMinutes: 15, checklist: ["Open emails", "Copy Q3 numbers"] })} className="px-3 py-1 bg-zinc-800 rounded border border-zinc-700 hover:bg-zinc-900">Focus on B1</button>
-                  <button onClick={() => activateFocus({ title: "Rehearse + final polish", description: "Run through once, fix glaring issues.", durationMinutes: 20 })} className="px-3 py-1 bg-zinc-800 rounded border border-zinc-700 hover:bg-zinc-900">Focus on B4</button>
-                </div>
-              )}
-
-              {focusedBlock && (
-                <div className="mt-6">
-                  <div className="text-xs uppercase tracking-widest text-emerald-500 mb-2 font-mono">ACTIVE FOCUS</div>
-                  <FocusBlocker
-                    id={`focus-${focusedBlock.title}`}
-                    title={focusedBlock.title}
-                    durationMinutes={focusedBlock.durationMinutes}
-                    description={focusedBlock.description}
-                    checklist={focusedBlock.checklist}
-                  />
-                  <button onClick={() => setFocusedBlock(null)} className="mt-2 text-xs text-zinc-500 hover:text-white">← Back to Timeline</button>
-                </div>
-              )}
             </div>
           )}
         </div>
       </div>
 
-      <footer className="border-t border-zinc-800 py-4 text-center text-[10px] font-mono text-zinc-600">
-        STATELESS • CLIENT-ONLY • USESTATE • POWERED BY TAMBO
+      <footer className="border-t border-[rgba(170,186,174,0.2)] py-4 text-center text-xs tracking-[0.05em] font-mono" style={{ color: "var(--text-muted)" }}>
+        STATELESS • CLIENT-ONLY • POWERED BY TAMBO
       </footer>
     </div>
   );

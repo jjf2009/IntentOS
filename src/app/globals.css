@@ -1,83 +1,125 @@
 @import "tailwindcss";
 
-/* === Crisis Mode War Room Theme (AGENTS.md) === */
-/* Deep dark, zinc-950, sharp zinc-800 borders, font-mono for timers/metrics */
-/* Urgency: red (catastrophic), amber (critical), green (active) */
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-border: var(--border);
-  --color-ring: var(--ring);
-  --color-muted: var(--muted);
-  --color-primary: var(--primary);
-  --color-accent: var(--accent);
-}
+/* === Soft Editorial Dark Studio (AGENTS.md) === */
+/* Warm, restrained, organic. Amaranth accent. No neon. */
 
 :root {
-  --radius: 0.5rem;
-}
+  --bg-canvas: #0f0d0c;
+  --bg-card: #1a1614;
+  --bg-modal: #231f1c;
+  --bg-hover: #201c19;
 
-.dark {
-  /* Force deep war room palette */
-  --background: #09090b; /* zinc-950 */
-  --foreground: #e4e4e7; /* zinc-200 */
-  --card: #18181b;       /* zinc-900 */
-  --card-foreground: #e4e4e7;
-  --popover: #18181b;
-  --popover-foreground: #e4e4e7;
-  --primary: #ef4444;    /* neon red for crisis */
-  --primary-foreground: #fff;
-  --secondary: #27272a;
-  --secondary-foreground: #e4e4e7;
-  --muted: #27272a;
-  --muted-foreground: #71717a;
-  --accent: #eab308;     /* amber */
-  --accent-foreground: #09090b;
-  --destructive: #ef4444;
-  --border: #27272a;     /* zinc-800 */
-  --input: #27272a;
-  --ring: #3f3f46; /* subtle neutral for focus rings */
+  --accent-primary: #933b5b;   /* Amaranth */
+  --accent-secondary: #b5728a; /* Thulian Pink */
+  --accent-neutral: #aabbae;   /* Brook Green */
+  --accent-warm: #e3d6bf;      /* Chalk */
+  --accent-muted: #9f9679;     /* Pomelo Olive */
+
+  --text-primary: #e3d6bf;
+  --text-secondary: #aabbae;
+  --text-muted: #9f9679;
+
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
 }
 
 @layer base {
   * {
-    @apply border-zinc-800 outline-ring/50;
+    @apply border-[rgba(170,186,174,0.2)];
   }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
   body {
-    @apply bg-zinc-950 text-zinc-200;
-    font-family: var(--font-geist-sans);
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font-feature-settings: "tnum" 1;
   }
+
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "tnum" 0;
+  }
+
   .font-mono {
-    font-family: var(--font-geist-mono);
+    font-family: var(--font-mono);
   }
 }
 
-/* War-room specific utilities */
-.war-card {
-  @apply rounded-xl border border-zinc-800 bg-zinc-900;
+/* Buttons */
+.btn-primary {
+  background: var(--accent-primary);
+  color: var(--text-primary);
+  padding: 10px 20px;
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
 }
 
-.war-timer {
-  @apply font-mono tabular-nums tracking-[1px];
+.btn-primary:hover {
+  background: var(--accent-secondary);
+  transform: scale(1.01);
 }
 
-.urgency-red {
-  @apply text-red-500 border-red-900/60 bg-red-950/60;
-}
-.urgency-amber {
-  @apply text-amber-500 border-amber-900/60 bg-amber-950/60;
-}
-.urgency-green {
-  @apply text-emerald-500 border-emerald-900/60 bg-emerald-950/60;
+.btn-primary:active {
+  transform: scale(0.985);
 }
 
-/* Keep only essential from previous (flash kept for possible reuse) */
-@keyframes flash {
-  0%, 100% { background-color: transparent; }
-  50% { background-color: rgb(239 68 68 / 0.15); }
+.btn-ghost {
+  border: 0.5px solid rgba(170, 186, 174, 0.3);
+  color: var(--text-secondary);
+  padding: 10px 20px;
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
 }
-.animate-flash {
-  animation: flash 1s ease-in-out;
+
+.btn-ghost:hover {
+  border-color: var(--accent-neutral);
+  color: var(--text-primary);
+  background: rgba(170, 186, 174, 0.05);
 }
+
+/* Cards & Surfaces */
+.card {
+  background: var(--bg-card);
+  border: 0.5px solid rgba(170, 186, 174, 0.2);
+  border-radius: var(--radius-card);
+}
+
+/* Tags / Chips */
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.chip-primary {
+  background: rgba(147, 59, 91, 0.12);
+  border: 0.5px solid rgba(147, 59, 91, 0.3);
+  color: var(--accent-primary);
+}
+
+.chip-neutral {
+  background: rgba(170, 186, 174, 0.12);
+  border: 0.5px solid rgba(170, 186, 174, 0.3);
+  color: var(--accent-neutral);
+}
+
+/* Mono utilities for timers / metrics */
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Progress bars use inline styles only (per AGENTS) */

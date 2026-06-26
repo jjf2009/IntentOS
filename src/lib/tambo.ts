@@ -28,7 +28,7 @@ export const components: TamboComponent[] = [
   {
     name: "CrisisTimeline",
     description:
-      "Use this for any high-stakes crisis. Converts a brain dump into a strict time-bound execution timeline. Always return realistic blocks with minute durations that add up to the available time. Prefer 4-7 blocks. Mark urgency appropriately. Include tasks when they help execution.",
+      "Use this for any high-stakes crisis. Converts a brain dump into a strict time-bound execution timeline. ALWAYS return a non-empty blocks array (minimum 3 blocks). Each block MUST have id, title, durationMinutes (number), and description. Optional: tasks[], urgency. The total of durationMinutes should roughly match the deadline. This is the primary way to respond to crisis brain-dumps.",
     component: CrisisTimeline,
     propsSchema: crisisTimelineSchema,
   },
